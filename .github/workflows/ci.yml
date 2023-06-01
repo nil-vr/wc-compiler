@@ -44,7 +44,7 @@ jobs:
     needs:
       - build
     runs-on: ubuntu-latest
-    if: 'github.event.ref_type == "tag"'
+    if: github.event.ref_type == 'tag'
     steps:
       - name: Download
         uses: actions/download-artifact@v2
