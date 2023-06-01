@@ -47,6 +47,8 @@ jobs:
       - build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
       - name: Download
         uses: actions/download-artifact@v2
