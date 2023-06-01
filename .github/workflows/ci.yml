@@ -38,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: wasi
-          path: target/wasm32-wasi/release/wc-compiler.*
+          path: target/wasm32-wasi/release/wc-compiler.wasm
           if-no-files-found: error
           retention-days: '2'
 
@@ -57,7 +57,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            import { readFile } from 'node:fs/promises';
+            const fs = require("node:fs/promises");
 
             const name = context.ref.replace(/^refs\/tags\//, '');
             const release = await github.rest.repos.createRelease({
@@ -73,7 +73,7 @@ jobs:
               headers: {
                 "content-type": "application/wasm",
               },
-              data: await readFile("artifacts/wc-compiler.wasm"),
+              data: await fs.readFile("artifacts/wasi/wc-compiler.wasm"),
               name: "wc-compiler.wasm",
             });
             await github.rest.repos.updateRelease({
