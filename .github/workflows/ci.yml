@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: 'true'
       - name: Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -38,7 +40,7 @@ jobs:
           name: wasi
           path: target/wasm32-wasi/release/wc-compiler.*
           if-no-files-found: error
-          retention-days: 2
+          retention-days: '2'
 
   release:
     needs:
