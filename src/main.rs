@@ -5,7 +5,7 @@ use std::{
     fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
-    io::{self, BufReader, Seek, SeekFrom, Write},
+    io::{self, BufReader, BufWriter, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     process::ExitCode,
     str::FromStr,
@@ -29,6 +29,7 @@ use output::Zone;
 use serde::{de::Visitor, Deserialize, Serialize};
 use sha2::{digest::Output, Digest, Sha256};
 use state::State;
+use tempfile::NamedTempFile;
 
 use crate::error::{
     CanceledOutOfRange, ConfirmedOutOfRange, ImageTooLarge, MissingTimeZone, MultiplePosters,
@@ -214,42 +215,26 @@ fn main() -> ExitCode {
 
     if errors.load(Ordering::SeqCst) == 0 {
         posters.save(&mut state);
-        let state_path = args.output.join("state.json");
-        if let Err(e) = tempfile::Builder::new()
-            .tempfile_in(&args.output)
-            .into_diagnostic()
-            .and_then(|mut t| {
-                serde_json::to_writer_pretty(&mut t, &state).into_diagnostic()?;
-                t.write_all(b"\n").into_diagnostic()?;
-                t.flush().into_diagnostic()?;
-                t.persist(&state_path).into_diagnostic()
-            })
-            .wrap_err_with(|| format!("Could not save state to {}", state_path.display()))
-        {
+        if let Err(e) = safely_save(&args.output, "state.json", |mut t| {
+            serde_json::to_writer_pretty(&mut t, &state).into_diagnostic()?;
+            t.write_all(b"\n").into_diagnostic()
+        }) {
             eprintln!("{e:?}");
             return ExitCode::FAILURE;
         }
 
-        let output_path = args.output.join("data.json");
-        if let Err(e) = tempfile::Builder::new()
-            .tempfile_in(&args.output)
-            .into_diagnostic()
-            .and_then(|mut t| {
-                serde_json::to_writer(
-                    &mut t,
-                    &output::Data {
-                        meta: &output_meta,
-                        events: &output_events,
-                        zones: &zones,
-                    },
-                )
-                .into_diagnostic()?;
-                t.write_all(b"\n").into_diagnostic()?;
-                t.flush().into_diagnostic()?;
-                t.persist(&output_path).into_diagnostic()
-            })
-            .wrap_err_with(|| format!("Could not save state to {}", state_path.display()))
-        {
+        if let Err(e) = safely_save(&args.output, "data.json", |mut t| {
+            serde_json::to_writer(
+                &mut t,
+                &output::Data {
+                    meta: &output_meta,
+                    events: &output_events,
+                    zones: &zones,
+                },
+            )
+            .into_diagnostic()?;
+            t.write_all(b"\n").into_diagnostic()
+        }) {
             eprintln!("{e:?}");
             return ExitCode::FAILURE;
         }
@@ -277,6 +262,27 @@ fn load_state(output_path: &Path) -> miette::Result<State> {
         Ok(state) => Ok(state),
         Err(e) => Err(StateParseError::new(e, &output_path.to_string_lossy(), state).into()),
     }
+}
+
+fn safely_save(
+    output_path: &Path,
+    name: &str,
+    save: impl FnOnce(&mut BufWriter<&mut NamedTempFile>) -> miette::Result<()>,
+) -> miette::Result<()> {
+    let save_path = output_path.join(name);
+    tempfile::Builder::new()
+        .tempfile_in(output_path)
+        .into_diagnostic()
+        .and_then(|mut t| {
+            {
+                let mut t = BufWriter::new(&mut t);
+                save(&mut t)?;
+                t.flush().into_diagnostic()?;
+            }
+            t.persist(&save_path).into_diagnostic()?;
+            Ok(())
+        })
+        .wrap_err_with(|| format!("Could not save {}", save_path.display()))
 }
 
 struct Handler {
