@@ -25,7 +25,8 @@ use miette::{
     Result, Severity,
 };
 
-use output::Zone;
+use output::{Hashtag, Zone};
+use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
 use serde::{de::Visitor, Deserialize, Serialize};
 use sha2::{digest::Output, Digest, Sha256};
 use state::State;
@@ -757,7 +758,7 @@ fn convert_event_info<'a>(
         web: value.web.as_deref(),
         discord: value.discord.as_deref(),
         group: value.group.as_deref(),
-        hashtag: value.hashtag.as_deref(),
+        hashtag: value.hashtag.as_deref().map(Hashtag::from),
         twitter: value.twitter.as_deref(),
         join: &value.join,
         world: value.world.as_ref(),
@@ -810,4 +811,32 @@ pub struct World<'a> {
     pub name: Cow<'a, str>,
     #[serde(borrow)]
     pub id: Cow<'a, str>,
+}
+
+impl<'a> From<&'a str> for Hashtag<'a> {
+    fn from(value: &'a str) -> Self {
+        const QUERY: &AsciiSet = &CONTROLS.add(b' ').add(b'"').add(b'#').add(b'<').add(b'>');
+        const PATH: &AsciiSet = &QUERY.add(b'?').add(b'`').add(b'{').add(b'}');
+        const USER_INFO: &AsciiSet = &PATH
+            .add(b'/')
+            .add(b':')
+            .add(b';')
+            .add(b'=')
+            .add(b'@')
+            .add(b'[')
+            .add(b'\\')
+            .add(b']')
+            .add(b'^')
+            .add(b'|');
+        const COMPONENT: &AsciiSet = &USER_INFO.add(b'$').add(b'&').add(b'+').add(b',');
+        let escaped = Cow::from(utf8_percent_encode(value, COMPONENT));
+        if value == &escaped {
+            Hashtag::Safe(value)
+        } else {
+            Hashtag::Escaped {
+                display: value,
+                escaped: escaped.into_owned(),
+            }
+        }
+    }
 }

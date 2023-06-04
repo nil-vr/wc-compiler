@@ -95,7 +95,7 @@ pub struct EventInfo<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hashtag: Option<&'a str>,
+    pub hashtag: Option<Hashtag<'a>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub twitter: Option<&'a str>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
@@ -160,4 +160,11 @@ pub struct MetaLanguage<'a> {
     pub description: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum Hashtag<'a> {
+    Safe(&'a str),
+    Escaped { display: &'a str, escaped: String },
 }
