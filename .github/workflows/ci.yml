@@ -26,6 +26,15 @@ jobs:
       - name: Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Validate
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(cargo metadata --format-version 1 --no-deps | jq -r '(.packages | map(select(.name == "wc-compiler")))[0].version')
+          if [ "${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Cargo.toml .version does not match tag name"
+            exit 1
+          fi
+
       - name: cargo fmt
         run: cargo fmt -- --check
       - name: cargo clippy
