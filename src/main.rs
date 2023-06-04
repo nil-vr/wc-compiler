@@ -830,7 +830,7 @@ impl<'a> From<&'a str> for Hashtag<'a> {
             .add(b'|');
         const COMPONENT: &AsciiSet = &USER_INFO.add(b'$').add(b'&').add(b'+').add(b',');
         let escaped = Cow::from(utf8_percent_encode(value, COMPONENT));
-        if value == &escaped {
+        if value == escaped {
             Hashtag::Safe(value)
         } else {
             Hashtag::Escaped {
