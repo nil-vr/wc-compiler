@@ -7,9 +7,6 @@ use toml::Spanned;
 
 use crate::{Language, Platform, User, World};
 
-//TODO: unused?
-mod one_or_many;
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Event<'a> {
