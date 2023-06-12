@@ -123,6 +123,20 @@ canceled = [
 ]
 ```
 
+## Monthly events
+
+This is supported by the compiler, but not yet used by the calendar script.
+
+Sometimes an event only occurs on certain weeks of the month.
+
+```toml
+weeks = [
+    1,
+    3,
+    5,
+]
+```
+
 # The meta file
 
 There must be a file named `meta.toml` with information about the calendar data.
