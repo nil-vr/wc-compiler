@@ -113,6 +113,8 @@ pub struct ConfirmedOutOfRange {
     pub date: NaiveDate,
     #[source_code]
     pub src: NamedSource,
+    #[label]
+    pub location: SourceSpan,
 }
 
 #[derive(Debug, Diagnostic, thiserror::Error)]
@@ -122,4 +124,6 @@ pub struct CanceledOutOfRange {
     pub date: NaiveDate,
     #[source_code]
     pub src: NamedSource,
+    #[label]
+    pub location: SourceSpan,
 }

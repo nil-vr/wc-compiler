@@ -466,18 +466,19 @@ fn prepare_event<'a, 'b>(
         input::DateSet::Dates(confirmed) => {
             let mut future = Vec::with_capacity(confirmed.len());
             for date in confirmed {
-                let Some(time) = event.get_time_for_day(*date, tz, true)? else {
+                let Some(time) = event.get_time_for_day(*date.as_ref(), tz, true)? else {
                     eprintln!(
                         "{:?}",
                         Report::new(ConfirmedOutOfRange {
-                            date: *date,
+                            date: *date.as_ref(),
                             src: event.source.into(),
+                            location: date.span().into(),
                         }),
                     );
                     continue;
                 };
                 if now < time {
-                    future.push(*date);
+                    future.push(*date.as_ref());
                 }
             }
             if future.is_empty() {
@@ -493,18 +494,19 @@ fn prepare_event<'a, 'b>(
         input::DateSet::Dates(canceled) => {
             let mut future = Vec::with_capacity(canceled.len());
             for date in canceled {
-                let Some(time) = event.get_time_for_day(*date, tz, false)? else {
+                let Some(time) = event.get_time_for_day(*date.as_ref(), tz, false)? else {
                     eprintln!(
                         "{:?}",
                         Report::new(CanceledOutOfRange {
-                            date: *date,
+                            date: *date.as_ref(),
                             src: event.source.into(),
+                            location: date.span().into(),
                         }),
                     );
                     continue;
                 };
                 if now < time {
-                    future.push(*date);
+                    future.push(*date.as_ref());
                 }
             }
             if future.is_empty() {

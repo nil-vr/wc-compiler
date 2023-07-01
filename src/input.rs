@@ -1,7 +1,10 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use chrono::{Duration, NaiveDate, NaiveTime};
-use serde::{de::Error, Deserialize, Deserializer};
+use serde::{
+    de::{Error, Visitor},
+    Deserialize, Deserializer,
+};
 use smallvec::{smallvec, SmallVec};
 use toml::Spanned;
 
@@ -161,8 +164,8 @@ impl<'de> Deserialize<'de> for Time<Duration> {
                     return Err(D::Error::custom("Time should not have an offset"));
                 }
                 let Some(time) = time.time else {
-                return Err(D::Error::custom("Time must contain a time"));
-            };
+                    return Err(D::Error::custom("Time must contain a time"));
+                };
                 if time.second != 0 || time.nanosecond != 0 {
                     return Err(D::Error::custom("Time must contain whole minutes"));
                 }
@@ -173,11 +176,10 @@ impl<'de> Deserialize<'de> for Time<Duration> {
     }
 }
 
-#[derive(Clone, Deserialize)]
-#[serde(untagged)]
+#[derive(Clone)]
 pub enum DateSet {
     All(bool),
-    Dates(Vec<NaiveDate>),
+    Dates(Vec<Spanned<NaiveDate>>),
 }
 
 impl DateSet {
@@ -187,6 +189,43 @@ impl DateSet {
 
     pub fn none() -> Self {
         DateSet::All(false)
+    }
+}
+
+// Manually implement deserialize to avoid toml-rs/toml#535.
+impl<'de> Deserialize<'de> for DateSet {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct DateSetVisitor;
+        impl<'de> Visitor<'de> for DateSetVisitor {
+            type Value = DateSet;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "true/false or an array of dates")
+            }
+
+            fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(DateSet::All(v))
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let mut dates = Vec::with_capacity(seq.size_hint().unwrap_or_default());
+                while let Some(v) = seq.next_element::<Spanned<NaiveDate>>()? {
+                    dates.push(v)
+                }
+                Ok(DateSet::Dates(dates))
+            }
+        }
+
+        deserializer.deserialize_seq(DateSetVisitor)
     }
 }
 
